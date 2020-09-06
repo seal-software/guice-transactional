@@ -1,6 +1,7 @@
 package com.hubspot.guice.transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.fail;
 
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -26,6 +27,8 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import com.hubspot.guice.transactional.TransactionSynchronization.Status;
+import com.hubspot.guice.transactional.impl.TransactionalInterceptor;
 import com.mchange.v2.sql.filter.FilterConnection;
 
 public class TransactionalDataSourceTest {
@@ -83,6 +86,27 @@ public class TransactionalDataSourceTest {
   public void itHandlesNestedTransactionWithConnectionCreatedAfter() throws SQLException {
     List<Connection> connections = testService.nestedTransactionalMethodCreateConnectionAfter();
     verifySame(connections);
+  }
+  
+  @Test
+  public void itHandlesSynchronizationComitted() throws SQLException {
+    TestTransactionSynchronization synchronization = new TestTransactionSynchronization();
+    List<Connection> connections = testService.synchronizationComitted(synchronization);
+    verifySame(connections);
+    assertThat(synchronization.getStatusList().size()).isEqualTo(1);
+    assertThat(synchronization.getStatusList().get(0)).isEqualTo(Status.COMMITED);
+  }
+  
+  @Test
+  public void itHandlesSynchronizationRolledBack() {
+    TestTransactionSynchronization synchronization = new TestTransactionSynchronization();
+    try {  
+      testService.synchronizatioRolledBack(synchronization);
+      fail("Expecting SQL Exception");
+    } catch (SQLException e) {
+      assertThat(synchronization.getStatusList().size()).isEqualTo(1);
+      assertThat(synchronization.getStatusList().get(0)).isEqualTo(Status.ROLLED_BACK);
+    }
   }
 
   private void verifyTransactionalStateIsCleared() throws SQLException {
@@ -157,6 +181,23 @@ public class TransactionalDataSourceTest {
     public List<Connection> transactionWithNoQueries() {
       return Collections.emptyList();
     }
+    
+    @Transactional
+    public List<Connection> synchronizationComitted(TransactionSynchronization synchronization) throws SQLException {        
+      List<Connection> connections = new ArrayList<>();
+      connections.addAll(transactionalMethod());
+      TransactionalInterceptor.registerSynchronization(synchronization);
+      return connections;
+    }
+    
+    @Transactional
+    public List<Connection> synchronizatioRolledBack(TransactionSynchronization synchronization) throws SQLException {        
+      List<Connection> connections = new ArrayList<>();
+      connections.addAll(transactionalMethod());
+      TransactionalInterceptor.registerSynchronization(synchronization);
+      throw new SQLException("Testing rollback!");
+    }
+    
   }
 
   private static class TestDataSource implements DataSource {
@@ -215,7 +256,6 @@ public class TransactionalDataSourceTest {
       this.name = name;
     }
 
-
     @Override
     public void setAutoCommit(boolean a) {}
 
@@ -231,6 +271,19 @@ public class TransactionalDataSourceTest {
     @Override
     public String getCatalog() throws SQLException {
       return name;
+    }
+  }
+  
+  private static class TestTransactionSynchronization implements TransactionSynchronization {
+    private final List<TransactionSynchronization.Status> statusList = new ArrayList<>();  
+
+    @Override
+    public void afterCompletion(Status status) {
+      statusList.add(status);
+    }
+
+    public List<TransactionSynchronization.Status> getStatusList() {
+      return statusList;
     }
   }
 }
