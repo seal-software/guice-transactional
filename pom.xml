@@ -24,6 +24,11 @@
         <artifactId>mchange-commons-java</artifactId>
         <version>0.2.15</version>
       </dependency>
+      <dependency>
+        <groupId>commons-logging</groupId>
+        <artifactId>commons-logging</artifactId>
+        <version>1.2</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -48,6 +53,10 @@
     <dependency>
       <groupId>com.mchange</groupId>
       <artifactId>mchange-commons-java</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>commons-logging</groupId>
+      <artifactId>commons-logging</artifactId>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
