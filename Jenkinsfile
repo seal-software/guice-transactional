@@ -18,7 +18,6 @@ pipeline {
 
     environment {
         BUILDVERSION = buildVersion()
-        VERSION = "0.2.4-SEAL.${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -73,17 +72,13 @@ def deploy() {
 }
 
 def getVersion() {
-    return isMaster() ? VERSION : BUILDVERSION
+    return BUILDVERSION
 }
 
 def getDeployProfile() {
-    return isMasterOrRelease() ? "release" : "builds"
+    return isRelease() ? "release" : "builds"
 }
 
-def isMasterOrRelease() {
-    return isMaster() || env.BRANCH_NAME ==~ /^releases\/.*/ || env.BRANCH_NAME ==~ /^....Q.$/
-}
-
-def isMaster() {
-    return env.BRANCH_NAME == 'master'
+def isRelease() {
+    return env.BRANCH_NAME ==~ /^releases\/.*/
 }
