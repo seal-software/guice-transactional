@@ -13,7 +13,7 @@ pipeline {
 
     agent { docker {
         image 'docker.seal-software.net/build-agent'
-	    label 'DO-677'
+	    label 'medium'
         args dockerArgs()
     }}
 
